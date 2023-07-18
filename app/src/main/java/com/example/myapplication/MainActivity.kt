@@ -7,6 +7,7 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.Bundle
 import android.util.Log
+import android.widget.Button
 import androidx.activity.ComponentActivity
 import androidx.core.app.ActivityCompat
 import okhttp3.OkHttpClient
@@ -14,12 +15,11 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
-import okio.ByteString
 import okio.ByteString.Companion.toByteString
 
 class MainActivity : ComponentActivity() {
     companion object {
-        private const val WS_URL = "ws://yourserver.com/ws"     // WebSocket 服务器地址
+        private const val WS_URL = "ws://192.168.31.241:8080/ws"     // WebSocket 服务器地址
 
         private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO;     // 录音通道设置
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;    // 录音格式
@@ -34,9 +34,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_audio_recoder)
+        setContentView(R.layout.activity_main)
 
-        btn_record.setOnClickListener {
+        val btnRecord = findViewById<Button>(R.id.btn_record)
+        btnRecord.setOnClickListener {
             if (!isRecording){
                 // 开始录音
                 startRecord()
@@ -118,6 +119,7 @@ class MainActivity : ComponentActivity() {
         webSocket = OkHttpClient().newWebSocket(request, object : WebSocketListener() {
 
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                webSocket.send("Hello, WebSocket!")
                 Log.d("WebSocket Info", "onOpen")
             }
 
@@ -137,6 +139,13 @@ class MainActivity : ComponentActivity() {
                 Log.e("WebSocket Error", t.message ?: "")
             }
         })
+    }
+
+    /**
+     * 断开 WebSocket 服务器
+     */
+    private fun disconnectWebSocket() {
+        webSocket?.cancel()
     }
 
 }
