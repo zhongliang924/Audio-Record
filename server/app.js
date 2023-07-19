@@ -1,28 +1,52 @@
-const WebSocket = require('ws');
-const fs = require('fs');
+const { connect } = require("http2");
+const path = require("path");
+const WebSocket = require("websocket").server;
+const wav = require("wav");
+const { client } = require("websocket");
 
-const wss = new WebSocket.Server({ port: 8080 });
+// 假设每个音频文件的采样率、通道数和样本宽度都相同
+const SAMPLE_RATE = 16000;
+const CHANNELS = 1;
+const SAMPLE_WIDTH = 2; // 16 bits per sample
 
-wss.on('connection', function connection(ws) {
-    console.log('client connected');
+let outputStream = null;
 
-    // 处理接收到的消息
-    ws.on('message', function incoming(data) {
-        console.log('received text message: %s', data);
-        if (typeof data === 'string') {
-            console.log('received text message: %s', data);
-        } else {
-            console.log('received binary message with %d bytes', data.length);
-
-            // 将二进制数据保存为音频文件
-            fs.writeFile('audio.wav', data, function (err) {
-                if (err) throw err;
-                console.log('saved audio file');
-            });
-        }
+function startServer() {
+    const server = require("http").createServer((request, response) => {
+        response.writeHead(404);
+        response.end();
     });
-    // 发送欢迎消息
-    ws.send('Welcome to my WebSocket server!');
-});
 
-console.log('WebSocket server started on port 8080');
+    server.listen(8080, () => {
+        console.log("Server is listening on port 8080");
+    });
+
+    const wsServer = new WebSocket({
+        httpServer: server,
+        autoAcceptConnections: true,
+    });
+
+    wsServer.on("connect", (connection) => {
+        console.log("WebSocket connection accepted, receive audio:");
+
+        outputStream = new wav.FileWriter(path.join(__dirname, "output.wav"), {
+            channels: CHANNELS,
+            sampleRate: SAMPLE_RATE,
+            bitDepth: SAMPLE_WIDTH * 8,
+        });
+
+        connection.on("message", (message) => {
+            if (message.type === "binary") {
+                outputStream.write(message.binaryData);
+                connection.sendUTF("Audio receiving.")
+            }
+        });
+
+        connection.on("close", () => {
+            console.log("WebSocket connection closed.");
+            connection.sendUTF("1234564");
+        });
+    });
+}
+
+startServer();
