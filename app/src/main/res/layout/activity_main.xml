@@ -3,13 +3,46 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".activity.MainActivity">
+    android:theme="@style/Theme.MyApplication"
+    tools:context="MainActivity">
+
 
     <Button
-        android:id="@+id/btn_record"
+        android:id="@+id/start"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:text="开始录音" />
+        android:layout_marginStart="80dp"
+        android:layout_marginTop="500dp"
+        android:text="开始录音"
+        android:textColor="@android:color/holo_blue_dark"/>
+
+    <Button
+        android:id="@+id/stop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="220dp"
+        android:layout_marginTop="500dp"
+        android:text="停止录音"
+        android:textColor="@android:color/holo_red_dark"/>
+
+    <TextView
+        android:id="@+id/messageTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="28sp"
+        android:text="点击“开始录音”按钮开启麦克风"/>
+
+    <TextView
+        android:id="@+id/editText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="100dp"
+        android:textSize="16sp"
+        android:text="此处显示语音识别结果"
+        android:background="@drawable/red_border"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp" />
+
 
 </RelativeLayout>
