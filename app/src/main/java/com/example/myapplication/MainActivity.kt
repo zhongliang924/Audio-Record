@@ -25,7 +25,7 @@ import okio.ByteString.Companion.toByteString
 class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
-        private const val WS_URL = "ws://192.168.31.241:8080/ws"     // WebSocket 服务器地址
+        private const val WS_URL = "ws://10.136.10.55:8080/ws"     // WebSocket 服务器地址
 
         private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO     // 录音通道设置
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT    // 录音格式
@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
         Log.d(TAG, "StartRecording:")
 
         val minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT) * 2
-
+        // 检查是否有录音权限，如果没有直接返回一个空值
         if (ActivityCompat.checkSelfPermission(
                 this,
                 Manifest.permission.RECORD_AUDIO
@@ -151,10 +151,11 @@ class MainActivity : ComponentActivity() {
         } catch (e: InterruptedException) {
             e.printStackTrace()
         }
+        // 告诉服务端完成录音
+        webSocket?.send("Recording finished") // 录音完成，发送消息给 webSocket
         // 停止录音并释放相关资源
         audioRecord?.stop()
         audioRecord?.release()
-        disconnectWebSocket()
     }
 
     /**
