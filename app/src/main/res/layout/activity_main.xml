@@ -13,34 +13,47 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="80dp"
         android:layout_marginTop="300dp"
+        android:background="@drawable/button_drawable"
         android:text="开始录音"
-        android:textColor="@android:color/holo_blue_dark"/>
+        android:textColor="@android:color/holo_green_light"/>
 
     <Button
         android:id="@+id/stop"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="220dp"
-        android:layout_marginTop="300dp"
+        android:layout_marginStart="80dp"
+        android:layout_marginTop="400dp"
+        android:background="@drawable/button_drawable"
         android:text="停止录音"
-        android:textColor="@android:color/holo_red_dark"/>
+        android:textColor="@android:color/holo_red_dark" />
 
     <TextView
         android:id="@+id/messageTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="28sp"
+        android:typeface="serif"
         android:text="点击“开始录音”按钮开启麦克风"/>
 
     <TextView
-        android:id="@+id/editText"
-        android:layout_width="match_parent"
+        android:id="@+id/statusTextView"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="0dp"
         android:layout_marginTop="100dp"
+        android:textSize="20sp"
+        android:text="服务器未开启"/>
+
+    <TextView
+        android:id="@+id/resultText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="200dp"
         android:textSize="16sp"
         android:text="此处显示语音识别结果"
-        android:background="@drawable/red_border"
+        android:background="@drawable/ep_sharp"
+        android:textStyle="bold"
         android:paddingTop="16dp"
         android:paddingBottom="16dp" />
 
