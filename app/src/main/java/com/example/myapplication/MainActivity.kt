@@ -20,6 +20,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString.Companion.toByteString
+import org.json.JSONObject
 
 
 class MainActivity : ComponentActivity() {
@@ -38,9 +39,12 @@ class MainActivity : ComponentActivity() {
     private var webSocket: WebSocket? = null
 
     private var recordingStartTime: Long = 0
-    private var recordDurationMs = 3000 // 指定录音时长 （毫秒）
+    private var recordDurationMs = 10000 // 指定录音时长 （毫秒）
 
     private lateinit var messageTextView: TextView
+    private lateinit var resultTextView: TextView
+    private lateinit var statusTextView: TextView
+
     private lateinit var startPlayer: MediaPlayer
     private lateinit var stopPlayer: MediaPlayer
 
@@ -59,6 +63,8 @@ class MainActivity : ComponentActivity() {
         val btnStop = findViewById<Button>(R.id.stop)
 
         messageTextView = findViewById(R.id.messageTextView)
+        resultTextView = findViewById(R.id.resultText)
+        statusTextView = findViewById(R.id.statusTextView)
 
         startPlayer = MediaPlayer.create(this, R.raw.ding)
         stopPlayer = MediaPlayer.create(this, R.raw.dong)
@@ -74,7 +80,7 @@ class MainActivity : ComponentActivity() {
         btnStop.setOnClickListener {
             stopRecord()
             stopPlayer.start()
-            disconnectWebSocket()
+            // disconnectWebSocket()
         }
     }
 
@@ -102,7 +108,6 @@ class MainActivity : ComponentActivity() {
      */
     private fun startRecord() {
         Log.d(TAG, "StartRecording:")
-
         val minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT) * 2
         // 检查是否有录音权限，如果没有直接返回一个空值
         if (ActivityCompat.checkSelfPermission(
@@ -125,6 +130,7 @@ class MainActivity : ComponentActivity() {
         readThread = Thread {
             val buffer = ByteArray(minBufferSize)
             audioRecord?.startRecording()
+            runOnUiThread { messageTextView.setText("正在录音...") }
             while (System.currentTimeMillis() - recordingStartTime < recordDurationMs) {
                 val readBytes = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                 if (readBytes > 0 && webSocket != null) {
@@ -147,15 +153,17 @@ class MainActivity : ComponentActivity() {
     private fun stopRecord() {
         // 等待读取线程完成执行，确保所有数据都已被写入并读取完毕
         try {
-            readThread?.join(1000)
+            readThread?.join(3000)
         } catch (e: InterruptedException) {
             e.printStackTrace()
         }
         // 告诉服务端完成录音
         webSocket?.send("Recording finished") // 录音完成，发送消息给 webSocket
+
         // 停止录音并释放相关资源
         audioRecord?.stop()
         audioRecord?.release()
+        runOnUiThread { messageTextView.setText("录音完成！") }
     }
 
     /**
@@ -171,8 +179,25 @@ class MainActivity : ComponentActivity() {
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 Log.d("WebSocket Info", "OnMessage: $text")
-                // 接收到服务器的消息，更新 UI 显示
-                runOnUiThread { messageTextView.setText(text) }
+                // 接收服务端传来的结果
+                val obj = JSONObject(text)  // 将 JSON 字符串转换为对象
+                when (obj.getString("type")) {
+                    // 处理不同类型的消息
+                    "result" -> {
+                        // 接收来自服务端的推理结果
+                        val data = obj.getString("data")
+                        runOnUiThread { resultTextView.setText(data) }
+                    }
+                    "status" -> {
+                        // 接收来自服务端的状态信息
+                        val status = obj.getString("status")
+                        runOnUiThread { statusTextView.setText(status) }
+                    }
+                    "stop" -> {
+                        // 接收断开连接的消息
+                        disconnectWebSocket()
+                    }
+                }
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -181,6 +206,7 @@ class MainActivity : ComponentActivity() {
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 Log.d("WebSocket Info", "onClosed")
+                runOnUiThread { statusTextView.setText("识别完成，连接断开") }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -193,7 +219,7 @@ class MainActivity : ComponentActivity() {
      * 断开 WebSocket 服务器
      */
     private fun disconnectWebSocket() {
-        webSocket?.cancel()
+        webSocket?.close(1000, "用户主动关闭")
     }
 
 }
