@@ -1,17 +1,29 @@
-const { connect } = require("http2");
+const http = require("http")
 const path = require("path");
 const WebSocket = require("websocket").server;
 const wav = require("wav");
 const fs = require("fs");
-const { client } = require("websocket");
+const messages = require("./message.js");
 
-// ����ÿ����Ƶ�ļ��Ĳ����ʡ�ͨ�������������ȶ���ͬ
+// 假设每个音频文件的采样率、通道数和样本宽度都相同
 const SAMPLE_RATE = 16000;
 const CHANNELS = 1;
 const SAMPLE_WIDTH = 2; // 16 bits per sample
 
 let outputStream = null;
-let data; // ����ת���ֽ��
+let data; // 语音转文字结果
+
+// 创建一个 HTTP 请求对象，检测是否启动 Triton
+const options = {
+    host: 'localhost',
+    port: 8000,
+    path: '/v2/health/ready',
+    method: 'GET',
+    headers: {
+        'User-Agent': 'curl/7.68.0',
+        'Accept': '*/*'
+    }
+};
 
 function startServer() {
     const server = require("http").createServer((request, response) => {
@@ -32,6 +44,7 @@ function startServer() {
 
     wsServer.on("connect", (connection) => {
         console.log("WebSocket connection accepted, receive audio:");
+        connection.sendUTF(JSON.stringify(messages.statusMessage1))     // 发送服务器连接成功的消息给客户端
 
         outputStream = new wav.FileWriter(path.join(__dirname, "output.wav"), {
             channels: CHANNELS,
@@ -42,27 +55,40 @@ function startServer() {
         connection.on("message", (message) => {
             if (message.type === "binary") {
                 outputStream.write(message.binaryData);
-                connection.sendUTF("Audio receiving.")
+                connection.sendUTF(JSON.stringify(messages.statusMessage2))     // 发送服务器正在接收的消息给客户端
             }
-            // ¼������
+            // 录音结束
             else {
-                // ���տͻ��˷��͵��ַ�����Ϣ
-                let str = JSON.stringify(message);
-                str = JSON.parse(str).utf8Data;
-                console.log(`Received message from client: ${str}`);
-                // ���� Python �ӽ��̣���Ƶ�����������
-                const pythonProcess = spawn('python', ['speech/client.py'])
-                pythonProcess.stdout.on('data', function(res){
-                    data = res.toString();
-                    console.log('stdout: ', data)
+                const req = http.request(options, res => {
+                    // 检测 NX 是否开启 Triton
+                    if (res.statusCode === 200){
+                        connection.sendUTF(JSON.stringify(messages.statusMessage3))     // 发送接收成功的消息给客户端
+                        // 接收客户端发送的字符串消息
+                        let str = JSON.stringify(message);
+                        str = JSON.parse(str).utf8Data;
+                        console.log(`Received message from client: ${str}`);
+                        // 运行 Python 子进程，音频程序进行推理
+                        const pythonProcess = spawn('python', ['speech/client.py'])
+                        pythonProcess.stdout.on('data', function(res){
+                            data = res.toString();
+                            console.log(data)
+                        })
+                        pythonProcess.on('close', () => {
+                            // 将推理结果写入到文件
+                            fs.writeFile('result.txt', data, (err) => {
+                                if (err) throw err;
+                                console.log("The file has been saved!")
+                            });
+                            messages.resultMessage.data = data
+                            connection.sendUTF(JSON.stringify(messages.resultMessage))  // 发送识别结果给客户端
+                            connection.sendUTF(JSON.stringify(messages.stopMessage))     // 发送关闭连接的消息给客户端
+                        });
+                    } else {
+                        console.log("Triton 服务器未启动")
+                        connection.sendUTF(JSON.stringify(messages.statusMessage4))
+                    }
                 })
-                // ���������д�뵽�ļ�
-                pythonProcess.on('close', () => {
-                    fs.writeFile('result.txt', data, (err) => {
-                        if (err) throw err;
-                        console.log("The file has been saved!")
-                    });
-                });
+                req.end();
             }
         });
 
